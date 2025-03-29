@@ -1,0 +1,130 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name
+    Default: wsi
+
+  PolicyName:
+    Type: String
+    Description: IAM Policy Name for S3 Access
+    Default: AmazonS3ReadOnlyAccess
+
+  AutoScalingGroupName:
+    Type: String
+    Description: "The Name of Auto Scaling Group"
+    Default: wsi-app
+
+  TargetGroupArn:
+    Type: String
+    Description: Target Group ARN
+
+  BastionSecurityGroupId:
+    Type: AWS::EC2::SecurityGroup::Id
+    Description: Bastion Host Security Group ID
+
+  LatestAmazonLinux2023AMI:
+    Type: AWS::SSM::Parameter::Value<AWS::EC2::Image::Id>
+    Default: /aws/service/ami-amazon-linux-latest/al2023-ami-minimal-kernel-default-x86_64
+
+Resources:
+  ASGInstanceRole:
+    Type: AWS::IAM::Role
+    Properties:
+      RoleName: !Sub "${Environment}-role-bastion"
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action: sts:AssumeRole
+            Effect: Allow
+            Principal:
+              Service: ec2.amazonaws.com
+
+  S3AccessPolicy:
+    Type: AWS::IAM::RolePolicyAttachment
+    Properties:
+      Role: !Ref ASGInstanceRole
+      PolicyArn: !Sub "arn:aws:iam::aws:policy/${PolicyName}"
+
+  ASGInstanceProfile:
+    Type: AWS::IAM::InstanceProfile
+    Properties:
+      InstanceProfileName: !Sub "${Environment}-profile-asg"
+      Roles:
+        - !Ref ASGInstanceRole
+
+  ASGSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${Environment}-asg-sg"
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: !Ref <Port>
+          ToPort: !Ref <Port>
+          SourceSecurityGroupId: !Ref BastionSecurityGroupId
+      SecurityGroupEgress:
+        - IpProtocol: tcp
+          FromPort: !Ref <Port>
+          ToPort: !Ref <Port>
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-asg-sg"
+
+  ASGLaunchTemplate:
+    Type: AWS::EC2::LaunchTemplate
+    Properties:
+      LaunchTemplateName: web_test_lt
+      LaunchTemplateData:
+        ImageId: !Ref LatestAmazonLinux2023AMI
+        InstanceType: <InstanceType>
+        KeyName: <KeyPairName>
+        SecurityGroupIds:
+          - !Ref ASGSecurityGroup
+        IamInstanceProfile:
+          Arn: !GetAtt ASGInstanceProfile.Arn
+        UserData:
+          Fn::Base64: |
+            #!/bin/bash
+            yum update -y
+        TagSpecifications:
+          - ResourceType: instance
+            Tags:
+              - Key: Name
+                Value: !Sub ${AutoScalingGroupName}
+
+  AutoScalingGroup:
+    Type: AWS::AutoScaling::AutoScalingGroup
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroupName
+      DesiredCapacity: 2
+      MinSize: 2
+      MaxSize: 10
+      VPCZoneIdentifier:
+        - !Ref PrivateSubnet1
+        - !Ref PrivateSubnet2
+        - !Ref PrivateSubnet3
+      TargetGroupARNs:
+        - !Ref TargetGroupArn
+      LaunchTemplate:
+        LaunchTemplateId: !Ref ASGLaunchTemplate
+        Version: !GetAtt ASGLaunchTemplate.LatestVersionNumber
+
+  AutoScalingPolicy:
+    Type: AWS::AutoScaling::ScalingPolicy
+    Properties:
+      AutoScalingGroupName: !Ref AutoScalingGroup
+      PolicyType: TargetTrackingScaling
+      TargetTrackingConfiguration:
+        PredefinedMetricSpecification:
+          PredefinedMetricType: ASGAverageCPUUtilization
+        TargetValue: 10.0
+
+Outputs:
+  AutoScalingGroupName:
+    Description: Auto Scaling Group Name
+    Value: !Ref AutoScalingGroup
+
+  AutoScalingPolicyArn:
+    Description: Auto Scaling Policy ARN
+    Value: !Ref AutoScalingPolicy

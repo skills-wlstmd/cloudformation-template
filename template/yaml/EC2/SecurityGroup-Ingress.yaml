@@ -1,0 +1,27 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "wsi"
+
+  SecurityGroupDescription:
+    Description: Security Group Description
+    Type: String
+    Default: "sg"
+
+Resources:
+  IngressSecurityGroup:
+    Type: AWS::EC2::SecurityGroupIngress
+    Properties:
+      GroupId: !Ref RDSSecurityGroup
+      IpProtocol: tcp
+      FromPort: 3306
+      ToPort: 3306
+      SourceSecurityGroupId: !Ref BastionSecurityGroup
+
+Outputs:
+  IngressSecurityGroupId:
+    Description: "Ingress Security Group Rule for RDS to Bastion"
+    Value: !Ref IngressSecurityGroup
+    Export:
+      Name: !Sub "${AWS::StackName}-SG-Ingress"

@@ -1,0 +1,57 @@
+Parameters:
+  LogGroupName:
+    Type: String
+    Description: Name of the CloudWatch Log Group
+    Default: "wsi-log-group"
+
+Resources:
+  KMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 7
+      KeyPolicy:
+        Version: "2012-10-17"
+        Id: key-default-1
+        Statement:
+          - Sid: Enable IAM User Permissions
+            Effect: Allow
+            Principal:
+              AWS: !Sub "arn:aws:iam::${AWS::AccountId}:root"
+            Action: kms:*
+            Resource: "*"
+
+          - Sid: Allow CloudWatch Logs use of the key
+            Effect: Allow
+            Principal:
+              Service: !Sub "logs.${AWS::Region}.amazonaws.com"
+            Action:
+              - kms:Encrypt
+              - kms:Decrypt
+              - kms:ReEncrypt*
+              - kms:GenerateDataKey*
+              - kms:DescribeKey
+            Resource: "*"
+      Tags:
+        - Key: Name
+          Value: cw-kms
+
+  KMSAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: alias/cw-kms
+      TargetKeyId: !Ref KMSKey
+
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupName: !Ref LogGroupName
+      KmsKeyId: !GetAtt KMSKey.Arn
+      Tags:
+        - Key: Name
+          Value: !Ref LogGroupName
+
+Outputs:
+  LogGroupId:
+    Description: CloudWatch Log Group ID
+    Value: !Ref CloudWatchLogGroup

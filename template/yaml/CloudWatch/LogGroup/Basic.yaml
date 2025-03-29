@@ -1,0 +1,35 @@
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Name of the EnvironmentName
+    Default: "wsi-log-group"
+
+  LogStreamName:
+    Type: String
+    Description: Name of the log stream
+    Default: "wsi-stream"
+
+Resources:
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: STANDARD
+      LogGroupName: !Ref EnvironmentName
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  CloudWatchLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref CloudWatchLogGroup
+      LogStreamName: !Ref LogStreamName
+
+Outputs:
+  LogGroupId:
+    Description: CloudWatch Log Group ID
+    Value: !Ref CloudWatchLogGroup
+
+  LogStreamId:
+    Description: CloudWatch Log Stream ID
+    Value: !Ref CloudWatchLogStream

@@ -1,0 +1,55 @@
+Description: Creating Amazon S3 bucket from CloudFormation
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "wsi"
+
+Resources:
+  S3Bucket:
+    Type: "AWS::S3::Bucket"
+    Description: "S3 Bucket"
+    Properties:
+      BucketName: !Sub ${EnvironmentName}-buckets-2025
+      AccessControl: Private
+      PublicAccessBlockConfiguration:
+        BlockPublicAcls: true
+        BlockPublicPolicy: true
+        IgnorePublicAcls: true
+        RestrictPublicBuckets: true
+      BucketEncryption:
+        ServerSideEncryptionConfiguration:
+          - ServerSideEncryptionByDefault:
+              SSEAlgorithm: AES256
+      VersioningConfiguration:
+        Status: Enabled
+
+  S3BucketPolicy:
+    Type: AWS::S3::BucketPolicy
+    Properties:
+      Bucket: !Ref S3Bucket
+      PolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Action:
+              - "s3:PutObject"
+            Effect: Allow
+            Principal:
+              AWS: arn:aws:iam::600734575887:root
+            Resource: !Sub "${S3Bucket.Arn}/*"
+
+Outputs:
+  S3Bucket:
+    Description: "S3 Bucket"
+    Value: !Ref S3Bucket
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-S3Bucket"
+
+  S3BucketPolicy:
+    Description: "S3 Bucket Policy"
+    Value: !Ref S3BucketPolicy
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-S3Bucket-Policy"

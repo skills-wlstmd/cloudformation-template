@@ -1,0 +1,54 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: "Environment name for the WAF Web ACL"
+    Default: "WAFWebACL"
+
+Resources:
+  BlockedIPSet:
+    Type: "AWS::WAFv2::IPSet"
+    Properties:
+      Name: blocked-ips
+      Scope: REGIONAL
+      IPAddressVersion: IPV4
+      Addresses:
+        - 192.168.1.1/32
+        - 203.0.113.0/24
+
+  WAFWebACL:
+    Type: "AWS::WAFv2::WebACL"
+    Properties:
+      Name: !Ref Environment
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      Rules:
+        - Name: block-ip
+          Priority: 0
+          Action:
+            Block: {}
+          Statement:
+            RateBasedStatement:
+              Limit: 1000
+              AggregateKeyType: IP
+          VisibilityConfig:
+            MetricName: block-ip
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+
+        - Name: block-specific-ip
+          Priority: 1
+          Action:
+            Block: {}
+          Statement:
+            IPSetReferenceStatement:
+              ARN: !GetAtt BlockedIPSet.Arn
+          VisibilityConfig:
+            MetricName: block-specific-ip
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+
+      VisibilityConfig:
+        MetricName: !Ref Environment
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true

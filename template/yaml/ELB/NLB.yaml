@@ -1,0 +1,115 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "wsi"
+
+Resources:
+  EIPAlb1:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  EIPAlb2:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  EIPAlb3:
+    Type: AWS::EC2::EIP
+    Properties:
+      Domain: vpc
+
+  NLBSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${EnvironmentName}-nlb-sg"
+      VpcId: !Ref MainVPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-nlb-sg"
+
+  NetworkLoadBalancer:
+    Type: AWS::ElasticLoadBalancingV2::LoadBalancer
+    Properties:
+      Name: !Sub "${EnvironmentName}-nlb"
+      Type: network
+      Scheme: internet-facing
+      SecurityGroups:
+        - !Ref NLBSecurityGroup
+      SubnetMappings:
+        - SubnetId: !Ref PublicSubnet1
+          AllocationId: !GetAtt EIPAlb1.AllocationId
+        - SubnetId: !Ref PublicSubnet2
+          AllocationId: !GetAtt EIPAlb2.AllocationId
+        - SubnetId: !Ref PublicSubnet3
+          AllocationId: !GetAtt EIPAlb3.AllocationId
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-nlb"
+
+  NLBTargetGroup:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroup
+    Properties:
+      Name: !Sub "${EnvironmentName}-tg"
+      Port: 80
+      Protocol: HTTP
+      VpcId: !Ref MainVPC
+      TargetType: instance
+      HealthCheckPath: /health
+      HealthCheckProtocol: HTTP
+      HealthCheckIntervalSeconds: 30
+      HealthyThresholdCount: 2
+      UnhealthyThresholdCount: 2
+      HealthCheckTimeoutSeconds: 5
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-tg"
+
+  NLBListener:
+    Type: AWS::ElasticLoadBalancingV2::Listener
+    Properties:
+      LoadBalancerArn: !Ref NetworkLoadBalancer
+      Port: 80
+      Protocol: HTTP
+      DefaultActions:
+        - Type: forward
+          TargetGroupArn: !Ref NLBTargetGroup
+
+  NLBTargetGroupAttachment:
+    Type: AWS::ElasticLoadBalancingV2::TargetGroupAttachment
+    Properties:
+      TargetGroupArn: !Ref NLBTargetGroup
+      TargetId: !Ref EC2Instance
+      Port: 80
+
+Outputs:
+  NLBSecurityGroupId:
+    Description: NLB Security Group ID
+    Value: !Ref NLBSecurityGroup
+
+  NLBId:
+    Description: Network Load Balancer ID
+    Value: !Ref NetworkLoadBalancer
+
+  EIPAlb1Id:
+    Description: EIP1 ID
+    Value: !Ref EIPAlb1
+
+  EIPAlb2Id:
+    Description: EIP2 ID
+    Value: !Ref EIPAlb2
+
+  EIPAlb3Id:
+    Description: EIP3 ID
+    Value: !Ref EIPAlb3

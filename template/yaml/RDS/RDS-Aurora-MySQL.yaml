@@ -1,0 +1,531 @@
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "wsi"
+
+  VpcCIDR:
+    Description: VPC-CIDR
+    Type: String
+    Default: 10.0.0.0/16
+
+  PublicSubnet1CIDR:
+    Description: Public1-CIDR
+    Type: String
+    Default: 10.0.0.0/24
+
+  PublicSubnet2CIDR:
+    Description: Public2-CIDR
+    Type: String
+    Default: 10.0.1.0/24
+
+  PublicSubnet3CIDR:
+    Description: Public3-CIDR
+    Type: String
+    Default: 10.0.2.0/24
+
+  PrivateSubnet1CIDR:
+    Description: Private1-CIDR
+    Type: String
+    Default: 10.0.3.0/24
+
+  PrivateSubnet2CIDR:
+    Description: Private2-CIDR
+    Type: String
+    Default: 10.0.4.0/24
+
+  PrivateSubnet3CIDR:
+    Description: Private3-CIDR
+    Type: String
+    Default: 10.0.5.0/24
+
+  ProtectedSubnet1CIDR:
+    Description: ProtectedSubnet1-CIDR
+    Type: String
+    Default: 10.0.6.0/24
+
+  ProtectedSubnet2CIDR:
+    Description: ProtectedSubnet2-CIDR
+    Type: String
+    Default: 10.0.7.0/24
+
+  ProtectedSubnet3CIDR:
+    Description: ProtectedSubnet3-CIDR
+    Type: String
+    Default: 10.0.8.0/24
+
+Resources:
+  #VPC
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-vpc
+
+  #InternetGateway
+  InternetGateway:
+    Type: AWS::EC2::InternetGateway
+    Properties:
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-igw
+
+  InternetGatewayAttachment:
+    Type: AWS::EC2::VPCGatewayAttachment
+    Properties:
+      InternetGatewayId: !Ref InternetGateway
+      VpcId: !Ref VPC
+
+  #Subnet
+  #Public Subnet
+  PublicSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnet1CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-public-a
+
+  PublicSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnet2CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-public-b
+
+  PublicSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Ref PublicSubnet3CIDR
+      MapPublicIpOnLaunch: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-public-c
+
+  #Private Subnet
+  PrivateSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-private-a
+
+  PrivateSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-private-b
+
+  PrivateSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Ref PrivateSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-private-c
+
+  #Protected Subnet
+  ProtectedSubnet1:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [0, !GetAZs ""]
+      CidrBlock: !Ref ProtectedSubnet1CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-protected-a
+
+  ProtectedSubnet2:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [1, !GetAZs ""]
+      CidrBlock: !Ref ProtectedSubnet2CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-protected-b
+
+  ProtectedSubnet3:
+    Type: AWS::EC2::Subnet
+    Properties:
+      VpcId: !Ref VPC
+      AvailabilityZone: !Select [2, !GetAZs ""]
+      CidrBlock: !Ref ProtectedSubnet3CIDR
+      MapPublicIpOnLaunch: false
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-protected-c
+
+  #NatGateway
+  NatGateway1EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway2EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway3EIP:
+    Type: AWS::EC2::EIP
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      Domain: vpc
+
+  NatGateway1:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway1EIP.AllocationId
+      SubnetId: !Ref PublicSubnet1
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-nat-a
+
+  NatGateway2:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway2EIP.AllocationId
+      SubnetId: !Ref PublicSubnet2
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-nat-b
+
+  NatGateway3:
+    Type: AWS::EC2::NatGateway
+    Properties:
+      AllocationId: !GetAtt NatGateway3EIP.AllocationId
+      SubnetId: !Ref PublicSubnet3
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-nat-c
+
+  #Route Table
+  #Public Route Table
+  PublicRouteTable:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-public-rt
+
+  DefaultPublicRoute:
+    Type: AWS::EC2::Route
+    DependsOn: InternetGatewayAttachment
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      DestinationCidrBlock: 0.0.0.0/0
+      GatewayId: !Ref InternetGateway
+
+  PublicSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet1
+
+  PublicSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet2
+
+  PublicSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PublicRouteTable
+      SubnetId: !Ref PublicSubnet3
+
+  #Private route Table
+  PrivateRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-private-a-rt
+
+  DefaultPrivateRoute1:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway1
+
+  PrivateSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable1
+      SubnetId: !Ref PrivateSubnet1
+
+  PrivateRouteTable2:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-private-b-rt
+
+  DefaultPrivateRoute2:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway2
+
+  PrivateSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable2
+      SubnetId: !Ref PrivateSubnet2
+
+  PrivateRouteTable3:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-private-c-rt
+
+  DefaultPrivateRoute3:
+    Type: AWS::EC2::Route
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      DestinationCidrBlock: 0.0.0.0/0
+      NatGatewayId: !Ref NatGateway3
+
+  PrivateSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref PrivateRouteTable3
+      SubnetId: !Ref PrivateSubnet3
+
+  #Protected Route Table
+  # ProtectedRouteTable1:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${EnvironmentName}-protected-a-rt
+
+  ProtectedRouteTable1:
+    Type: AWS::EC2::RouteTable
+    Properties:
+      VpcId: !Ref VPC
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-protected-rt
+
+  ProtectedSubnet1RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref ProtectedRouteTable1
+      SubnetId: !Ref ProtectedSubnet1
+
+  # ProtectedRouteTable2:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${EnvironmentName}-protected-b-rt
+
+  ProtectedSubnet2RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref ProtectedRouteTable1
+      SubnetId: !Ref ProtectedSubnet2
+
+  # ProtectedRouteTable3:
+  #   Type: AWS::EC2::RouteTable
+  #   Properties:
+  #     VpcId: !Ref VPC
+  #     Tags:
+  #       - Key: Name
+  #         Value: !Sub ${EnvironmentName}-protected-c-rt
+
+  ProtectedSubnet3RouteTableAssociation:
+    Type: AWS::EC2::SubnetRouteTableAssociation
+    Properties:
+      RouteTableId: !Ref ProtectedRouteTable1
+      SubnetId: !Ref ProtectedSubnet3
+
+  #RDS Security Group
+  RDSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupDescription: !Sub ${EnvironmentName}-rds-sg
+      VpcId: !Ref VPC
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 3306
+          ToPort: 3306
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-rds-sg
+
+  #RDS Subnet Group
+  RDSSubnetGroup:
+    Type: AWS::RDS::DBSubnetGroup
+    Properties:
+      DBSubnetGroupDescription: !Sub ${EnvironmentName}-subnetgroup
+      DBSubnetGroupName: !Sub ${EnvironmentName}-subnetgroup
+      SubnetIds:
+        - !Ref ProtectedSubnet1
+        - !Ref ProtectedSubnet2
+        - !Ref ProtectedSubnet3
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-subnetgroup
+
+  #RDS Cluster Parameter Group
+  RDSClusterParameterGroup:
+    Type: AWS::RDS::DBClusterParameterGroup
+    Properties:
+      DBClusterParameterGroupName: !Sub ${EnvironmentName}-cpg
+      Description: !Sub ${EnvironmentName}-cpg
+      Family: aurora-mysql8.0
+      Parameters:
+        time_zone: "Asia/Seoul"
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-cpg
+
+  #RDS Parameter Group
+  RDSParameterGroup:
+    Type: AWS::RDS::DBParameterGroup
+    Properties:
+      DBParameterGroupName: !Sub ${EnvironmentName}-pg
+      Description: !Sub ${EnvironmentName}-pg
+      Family: aurora-mysql8.0
+      Parameters: {}
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-pg
+
+  #RDS DataBase
+  RDSCluster:
+    Type: "AWS::RDS::DBCluster"
+    Properties:
+      DBClusterIdentifier: !Sub ${EnvironmentName}-db
+      DatabaseName: wsi
+      Engine: aurora-mysql
+      EngineMode: provisioned
+      MasterUsername: admin
+      MasterUserPassword: Skill53##
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      VpcSecurityGroupIds:
+        - !Ref RDSSecurityGroup
+      AvailabilityZones:
+        - ap-northeast-2a
+        - ap-northeast-2b
+        - ap-northeast-2c
+      Port: 3306
+      DBClusterParameterGroupName: !Ref RDSClusterParameterGroup
+      StorageEncrypted: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-db
+
+  RDSInstance1:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      DBInstanceClass: db.t3.medium
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      Engine: aurora-mysql
+      DBClusterIdentifier: !Ref RDSCluster
+      PubliclyAccessible: false
+      DBParameterGroupName: !Ref RDSParameterGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-aurora-instance1
+
+  RDSInstance2:
+    Type: "AWS::RDS::DBInstance"
+    Properties:
+      DBInstanceClass: db.t3.medium
+      DBSubnetGroupName: !Ref RDSSubnetGroup
+      Engine: aurora-mysql
+      DBClusterIdentifier: !Ref RDSCluster
+      PubliclyAccessible: false
+      DBParameterGroupName: !Ref RDSParameterGroup
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-aurora-instance2
+
+Outputs:
+  RDSSubnetGroup:
+    Description: "RDS Subnet Group"
+    Value: !Ref RDSSubnetGroup
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-RDS-SubnetGroup"
+
+  RDSParameterGroup:
+    Description: "RDS Subnet Group"
+    Value: !Ref RDSParameterGroup
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-RDS-ParamterGroup"
+
+  RDSClusterParameterGroup:
+    Description: "RDS Subnet Group"
+    Value: !Ref RDSClusterParameterGroup
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-RDS-ClusterParamterGroup"
+
+  RDSCluster:
+    Description: "RDS CLuster"
+    Value: !Ref RDSCluster
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-RDS-Cluster"
+
+  RDSInstance1:
+    Description: "RDS Instance 1"
+    Value: !Ref RDSInstance1
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-RDS-Instance-1"
+
+  RDSInstance2:
+    Description: "RDS Instance 2"
+    Value: !Ref RDSInstance2
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-RDS-Instance-2"

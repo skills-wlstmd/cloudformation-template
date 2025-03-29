@@ -1,0 +1,120 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: "Environment name for the API Gateway"
+    Default: "APIGateway"
+
+  StageName:
+    Type: String
+    Default: "dev"
+    Description: "Deployment stage name"
+
+Resources:
+  # API Gateway
+  APIGateway:
+    Type: "AWS::ApiGateway::RestApi"
+    Properties:
+      Name: !Ref Environment
+
+  # GET Method
+  GetMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      RestApiId: !Ref APIGateway
+      ResourceId: !GetAtt APIGateway.RootResourceId
+      HttpMethod: GET
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: GET
+        Uri: <ARN>
+        Credentials: !GetAtt APIGatewayRole.Arn
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+
+  # POST Method
+  PostMethod:
+    Type: "AWS::ApiGateway::Method"
+    Properties:
+      RestApiId: !Ref APIGateway
+      ResourceId: !GetAtt APIGateway.RootResourceId
+      HttpMethod: POST
+      AuthorizationType: NONE
+      Integration:
+        Type: AWS
+        IntegrationHttpMethod: POST
+        Uri: <ARN>
+        Credentials: !GetAtt APIGatewayRole.Arn
+        RequestTemplates:
+          application/json: |
+            {
+              "text": "test"
+            }
+        IntegrationResponses:
+          - StatusCode: 200
+            ResponseTemplates:
+              application/json: ""
+      MethodResponses:
+        - StatusCode: 200
+          ResponseModels:
+            application/json: Empty
+
+  # GET Integration Response
+  GetIntegrationResponse:
+    Type: "AWS::ApiGateway::IntegrationResponse"
+    Properties:
+      RestApiId: !Ref APIGateway
+      ResourceId: !GetAtt APIGateway.RootResourceId
+      HttpMethod: GET
+      StatusCode: 200
+      ResponseTemplates:
+        application/json: ""
+      DependsOn:
+        - GetMethod
+
+  # POST Integration Response
+  PostIntegrationResponse:
+    Type: "AWS::ApiGateway::IntegrationResponse"
+    Properties:
+      RestApiId: !Ref APIGateway
+      ResourceId: !GetAtt APIGateway.RootResourceId
+      HttpMethod: POST
+      StatusCode: 200
+      ResponseTemplates:
+        application/json: ""
+      DependsOn:
+        - PostMethod
+
+  # # IAM Role for API Gateway
+  # APIGatewayRole:
+  #   Type: "AWS::IAM::Role"
+  #   Properties:
+  #     RoleName: apigw-role
+  #     AssumeRolePolicyDocument:
+  #       Version: "2012-10-17"
+  #       Statement:
+  #         - Effect: Allow
+  #           Principal:
+  #             Service: apigateway.amazonaws.com
+  #           Action: "sts:AssumeRole"
+  #     ManagedPolicyArns:
+  #       - "arn:aws:iam::aws:policy/AWSLambda_FullAccess"
+
+  # API Gateway Deployment
+  APIGatewayDeployment:
+    Type: "AWS::ApiGateway::Deployment"
+    DependsOn:
+      - GetMethod
+      - PostMethod
+    Properties:
+      RestApiId: !Ref APIGateway
+      StageName: !Ref StageName
+
+Outputs:
+  APIGatewayARN:
+    Description: "API Gateway ARN"
+    Value: !Ref APIGateway
+    Export:
+      Name: !Sub "${AWS::StackName}-APIGatewayARN"

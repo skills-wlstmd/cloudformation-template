@@ -1,0 +1,37 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: "Environment name for the WAF Web ACL"
+    Default: "WAFWebACL"
+
+Resources:
+  WAFWebACL:
+    Type: "AWS::WAFv2::WebACL"
+    Properties:
+      Name: !Ref Environment
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      Rules:
+        - Name: captcha-all
+          Priority: 0
+          Action:
+            Captcha: {}
+          Statement:
+            ByteMatchStatement:
+              SearchString: /
+              FieldToMatch:
+                URIPath: {}
+              TextTransformations:
+                - Priority: 0
+                  Type: NONE
+              PositionalConstraint: CONTAINS
+          VisibilityConfig:
+            MetricName: captcha-all
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+
+      VisibilityConfig:
+        MetricName: !Ref Environment
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true

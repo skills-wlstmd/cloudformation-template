@@ -1,0 +1,19 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: "Environment name for the WAF Web ACL"
+    Default: "WAFWebACL"
+
+Resources:
+  WAFWebACL:
+    Type: "AWS::WAFv2::WebACL"
+    Properties:
+      Name: !Ref Environment
+      Scope: REGIONAL # or CLOUDFRONT
+      DefaultAction:
+        Allow: {}
+      VisibilityConfig:
+        MetricName: !Ref Environment
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
+      Rules: []

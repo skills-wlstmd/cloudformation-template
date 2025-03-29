@@ -1,0 +1,35 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "AWS KMS Key and Alias Configuration"
+
+Parameters:
+  EnvironmentName:
+    Description: An environment name that is prefixed to resource names
+    Type: String
+    Default: "wsi"
+
+Resources:
+  KMSKey:
+    Type: AWS::KMS::Key
+    Properties:
+      Description: !Sub "KMS key for ${EnvironmentName} environment"
+      KeyUsage: ENCRYPT_DECRYPT
+      PendingWindowInDays: 7
+      Enabled: true
+      Tags:
+        - Key: Name
+          Value: !Sub "${EnvironmentName}-kms"
+
+  KMSKeyAlias:
+    Type: AWS::KMS::Alias
+    Properties:
+      AliasName: !Sub "alias/${EnvironmentName}-kms"
+      TargetKeyId: !Ref KMSKey
+
+Outputs:
+  KMSKeyId:
+    Description: KMS Key ID
+    Value: !Ref KMSKey
+
+  KMSKeyAlias:
+    Description: KMS Key Alias ARN
+    Value: !Ref KMSKeyAlias

@@ -1,0 +1,36 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: "Environment name for the WAF Web ACL"
+    Default: "WAFWebACL"
+  CountryCode:
+    Type: String
+    Description: "ISO 3166-1 Country Code to block"
+    Default: "US"
+
+Resources:
+  WAFWebACL:
+    Type: "AWS::WAFv2::WebACL"
+    Properties:
+      Name: !Ref Environment
+      Scope: REGIONAL
+      DefaultAction:
+        Allow: {}
+      Rules:
+        - Name: deny-country
+          Priority: 0
+          Action:
+            Block: {}
+          Statement:
+            GeoMatchStatement:
+              CountryCodes:
+                - !Ref CountryCode
+          VisibilityConfig:
+            MetricName: deny-country
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+
+      VisibilityConfig:
+        MetricName: !Ref Environment
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true

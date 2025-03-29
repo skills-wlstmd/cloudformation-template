@@ -1,0 +1,55 @@
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Name of the EnvironmentName
+    Default: "wsi"
+
+  VpcCIDR:
+    Description: VPC-CIDR
+    Type: String
+    Default: 10.0.0.0/16
+
+  LogStreamName:
+    Type: String
+    Description: Name of the log stream
+    Default: "wsi-stream"
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-vpc
+
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: STANDARD
+      LogGroupName: !Sub "/aws/route53/${EnvironmentName}"
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  CloudWatchLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref CloudWatchLogGroup
+      LogStreamName: !Ref LogStreamName
+
+  Route53PrivateHostedZone:
+    Type: AWS::Route53::HostedZone
+    DependsOn: CloudWatchLogGroup
+    Properties:
+      Name: "example.com"
+      HostedZoneConfig:
+        Comment: "Private hosted zone for example.com"
+      HostedZoneTags:
+        - Key: "Environment"
+          Value: "Production"
+      VPCs:
+        - VPCId: !Ref VPC
+          VPCRegion: !Ref AWS::Region

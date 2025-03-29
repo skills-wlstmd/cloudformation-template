@@ -1,0 +1,33 @@
+Description: "DHCP Options for VPC"
+
+Parameters:
+  EnvironmentName:
+    Description: prefixed to resource names
+    Type: String
+    Default: "wsi"
+
+Resources:
+  DhcpOptions:
+    Type: AWS::EC2::DHCPOptions
+    Properties:
+      DomainNameServers:
+        - 10.0.0.2
+      NtpServers:
+        - 169.254.169.123
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-dhcp
+
+  DHCPOptionsAssociation:
+    Type: AWS::EC2::VPCDHCPOptionsAssociation
+    Properties:
+      DhcpOptionsId: !Ref DhcpOptions
+      VpcId:
+        Fn::ImportValue: wsi-stack-VPC-VPC
+Outputs:
+  DHCP:
+    Description: "VPC Flow Log"
+    Value: !Ref DhcpOptions
+    Export:
+      Name:
+        "Fn::Sub": "${AWS::StackName}-DHCP"

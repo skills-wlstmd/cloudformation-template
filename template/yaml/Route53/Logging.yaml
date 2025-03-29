@@ -1,0 +1,100 @@
+Description: CloudFormation template to create a Route 53 private hosted zone with query logging enabled. Support Region only us-east-1.
+
+Parameters:
+  EnvironmentName:
+    Type: String
+    Description: Name of the EnvironmentName
+    Default: "wsi"
+
+  VpcCIDR:
+    Description: VPC-CIDR
+    Type: String
+    Default: 10.0.0.0/16
+
+  LogStreamName:
+    Type: String
+    Description: Name of the log stream
+    Default: "wsi-stream"
+
+Resources:
+  VPC:
+    Type: AWS::EC2::VPC
+    Properties:
+      CidrBlock: !Ref VpcCIDR
+      EnableDnsSupport: true
+      EnableDnsHostnames: true
+      Tags:
+        - Key: Name
+          Value: !Sub ${EnvironmentName}-vpc
+
+  CloudWatchLogGroup:
+    Type: AWS::Logs::LogGroup
+    Properties:
+      LogGroupClass: STANDARD
+      LogGroupName: !Sub "/aws/route53/${EnvironmentName}"
+      Tags:
+        - Key: Name
+          Value: !Ref EnvironmentName
+
+  CloudWatchLogStream:
+    Type: AWS::Logs::LogStream
+    Properties:
+      LogGroupName: !Ref CloudWatchLogGroup
+      LogStreamName: !Ref LogStreamName
+
+  CloudWatchResourcePolicy:
+    Type: AWS::Logs::ResourcePolicy
+    Properties:
+      PolicyName: Route53QueryLoggingPolicy
+      PolicyDocument: !Sub |
+        {
+          "Version": "2012-10-17",
+          "Statement": [
+            {
+              "Effect": "Allow",
+              "Principal": {
+                "Service": "route53.amazonaws.com"
+              },
+              "Action": [
+                "logs:CreateLogStream",
+                "logs:PutLogEvents"
+              ],
+              "Resource": "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/route53/${EnvironmentName}:*"
+            }
+          ]
+        }
+
+  Route53LoggingRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: "2012-10-17"
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: route53.amazonaws.com
+            Action: "sts:AssumeRole"
+      Policies:
+        - PolicyName: Route53QueryLoggingPolicy
+          PolicyDocument:
+            Version: "2012-10-17"
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogStream
+                  - logs:DescribeLogGroups
+                  - logs:DescribeLogStreams
+                  - logs:PutLogEvents
+                Resource: !GetAtt CloudWatchLogGroup.Arn
+
+  Route53PublicHostedZone:
+    Type: AWS::Route53::HostedZone
+    Properties:
+      Name: "wsi.com"
+      HostedZoneConfig:
+        Comment: "Public hosted zone for wsi.com"
+      HostedZoneTags:
+        - Key: "Environment"
+          Value: "Production"
+      QueryLoggingConfig:
+        CloudWatchLogsLogGroupArn: !Sub "arn:aws:logs:${AWS::Region}:${AWS::AccountId}:log-group:/aws/route53/${EnvironmentName}"

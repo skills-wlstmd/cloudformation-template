@@ -1,0 +1,126 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: Environment name for resources
+    Default: wsi
+
+  ContainerImage:
+    Type: String
+    Description: Docker image for the container
+
+  ContainerPort:
+    Type: Number
+    Description: Container port number
+    Default: 80
+
+  VpcId:
+    Type: AWS::EC2::VPC::Id
+    Description: VPC ID
+
+  PrivateSubnetA:
+    Type: AWS::EC2::Subnet::Id
+    Description: First Private Subnet ID
+
+  PrivateSubnetC:
+    Type: AWS::EC2::Subnet::Id
+    Description: Third Private Subnet ID
+
+  TargetGroupArn:
+    Type: String
+    Description: Target Group ARN for Load Balancer
+
+Resources:
+  # ECS Cluster
+  ECSCluster:
+    Type: AWS::ECS::Cluster
+    Properties:
+      ClusterName: !Sub "${Environment}-cluster"
+      ClusterSettings:
+        - Name: containerInsights
+          Value: enabled
+
+  # ECS Cluster Capacity Providers
+  ECSClusterCapacityProviders:
+    Type: AWS::ECS::ClusterCapacityProviders
+    Properties:
+      Cluster: !Ref ECSCluster
+      CapacityProviders:
+        - FARGATE
+      DefaultCapacityProviderStrategy:
+        - Base: 1
+          Weight: 100
+          CapacityProvider: FARGATE
+
+  # ECS Task Definition
+  ECSTaskDefinition:
+    Type: AWS::ECS::TaskDefinition
+    Properties:
+      Family: !Sub "${Environment}-td"
+      RequiresCompatibilities:
+        - FARGATE
+      NetworkMode: awsvpc
+      Cpu: "1024"
+      Memory: "2048"
+      ContainerDefinitions:
+        - Name: !Sub "${Environment}-cnt"
+          Image: !Ref ContainerImage
+          Cpu: 10
+          Memory: 512
+          Essential: true
+          PortMappings:
+            - ContainerPort: !Ref ContainerPort
+
+  # ECS Security Group
+  ECSSecurityGroup:
+    Type: AWS::EC2::SecurityGroup
+    Properties:
+      GroupName: !Sub "${Environment}-ecs-sg"
+      VpcId: !Ref VpcId
+      SecurityGroupIngress:
+        - IpProtocol: tcp
+          FromPort: 80
+          ToPort: 80
+          CidrIp: 0.0.0.0/0
+      SecurityGroupEgress:
+        - IpProtocol: -1
+          FromPort: 0
+          ToPort: 0
+          CidrIp: 0.0.0.0/0
+      Tags:
+        - Key: Name
+          Value: !Sub "${Environment}-ecs-sg"
+
+  # ECS Service
+  ECSService:
+    Type: AWS::ECS::Service
+    Properties:
+      ServiceName: !Sub "${Environment}-svc"
+      Cluster: !Ref ECSCluster
+      TaskDefinition: !Ref ECSTaskDefinition
+      DesiredCount: 2
+      LaunchType: FARGATE
+      NetworkConfiguration:
+        AwsvpcConfiguration:
+          Subnets:
+            - !Ref PrivateSubnetA
+            - !Ref PrivateSubnetC
+          SecurityGroups:
+            - !Ref ECSSecurityGroup
+          AssignPublicIp: DISABLED
+      LoadBalancers:
+        - TargetGroupArn: !Ref TargetGroupArn
+          ContainerName: !Sub "${Environment}-cnt"
+          ContainerPort: !Ref ContainerPort
+
+Outputs:
+  ECSClusterName:
+    Description: ECS Cluster Name
+    Value: !Ref ECSCluster
+
+  ECSServiceArn:
+    Description: ECS Service ARN
+    Value: !Ref ECSService
+
+  ECSTaskDefinitionArn:
+    Description: ECS Task Definition ARN
+    Value: !Ref ECSTaskDefinition

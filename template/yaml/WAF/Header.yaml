@@ -1,0 +1,75 @@
+Parameters:
+  Environment:
+    Type: String
+    Description: "Environment name for the WAF Web ACL"
+    Default: "WAFWebACL"
+  HeaderName1:
+    Type: String
+    Description: "First header name to match"
+    Default: "User-Agent"
+  HeaderValue1:
+    Type: String
+    Description: "First header value to match"
+    Default: "curl"
+  HeaderName2:
+    Type: String
+    Description: "Second header name to match"
+    Default: "User-Agent"
+  PathPattern:
+    Type: String
+    Description: "URI path pattern to match"
+    Default: "/v1"
+
+Resources:
+  WAFWebACL:
+    Type: "AWS::WAFv2::WebACL"
+    Properties:
+      Name: !Ref Environment
+      Scope: REGIONAL
+      DefaultAction:
+        Block: {}
+      Rules:
+        - Name: waf-header
+          Priority: 0
+          Action:
+            Allow: {}
+          Statement:
+            AndStatement:
+              Statements:
+                - ByteMatchStatement:
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: !Ref HeaderName1
+                    PositionalConstraint: CONTAINS
+                    SearchString: !Ref HeaderValue1
+                    TextTransformations:
+                      - Type: NONE
+                        Priority: 0
+
+                - ByteMatchStatement:
+                    FieldToMatch:
+                      SingleHeader:
+                        Name: !Ref HeaderName2
+                    PositionalConstraint: CONTAINS
+                    SearchString: latest
+                    TextTransformations:
+                      - Type: NONE
+                        Priority: 0
+
+                - ByteMatchStatement:
+                    FieldToMatch:
+                      URIPath: {}
+                    PositionalConstraint: CONTAINS
+                    SearchString: !Ref PathPattern
+                    TextTransformations:
+                      - Type: NONE
+                        Priority: 0
+          VisibilityConfig:
+            MetricName: waf-header
+            SampledRequestsEnabled: true
+            CloudWatchMetricsEnabled: true
+
+      VisibilityConfig:
+        MetricName: !Ref Environment
+        SampledRequestsEnabled: true
+        CloudWatchMetricsEnabled: true
