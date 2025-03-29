@@ -1,0 +1,106 @@
+AWSTemplateFormatVersion: "2010-09-09"
+Description: "WorldSkills 2025 Practice"
+
+Parameters:
+  Title:
+    Type: "String"
+    Default: "Hello, World!"
+  Vpc:
+    Type: String
+    Default: vpc-03455c42d95aded7f
+  Subnets:
+    Type: CommaDelimitedList
+    Default: subnet-042e563260baf3fd3,subnet-0abf0cbb6ceeebf03
+
+Resources:
+  Instance:
+    Type: "AWS::EC2::Instance"
+    Properties:
+      ImageId: "ami-062cddb9d94dcf95d"
+      InstanceType: "t3.small"
+      KeyName: !Ref KeyPair
+      SecurityGroupIds:
+        - !GetAtt WebSecurityGroup.GroupId
+      UserData:
+        Fn::Base64: !Sub |
+          #!/bin/bash
+          yum update -y
+          yum install -y nginx
+          systemctl start nginx
+          systemctl enable nginx
+          echo "${Title}" > /usr/share/nginx/html/index.html
+      Tags:
+        - Key: "Name"
+          Value: "skills-web"
+
+  ALB:
+    Type: "AWS::ElasticLoadBalancingV2::LoadBalancer"
+    Properties:
+      Name: "skills-alb"
+      Scheme: "internet-facing"
+      Type: "application"
+      Subnets: !Ref Subnets
+      SecurityGroups:
+        - !GetAtt AlbSecurityGroup.GroupId
+
+  ALBListener:
+    Type: "AWS::ElasticLoadBalancingV2::Listener"
+    Properties:
+      LoadBalancerArn: !Ref ALB
+      Port: 80
+      Protocol: "HTTP"
+      DefaultActions:
+        - Order: 1
+          TargetGroupArn: !Ref TargetGroup
+          Type: "forward"
+
+  WebSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    DependsOn: "AlbSecurityGroup"
+    Properties:
+      GroupDescription: "Allow SSH, HTTP traffic"
+      GroupName: "skills-web-sg"
+      SecurityGroupIngress:
+        - SourceSecurityGroupName: !Ref AlbSecurityGroup
+          FromPort: 80
+          IpProtocol: "tcp"
+          ToPort: 80
+        - CidrIp: "0.0.0.0/0"
+          FromPort: 22
+          IpProtocol: "tcp"
+          ToPort: 22
+
+  AlbSecurityGroup:
+    Type: "AWS::EC2::SecurityGroup"
+    Properties:
+      GroupDescription: "Allow HTTP traffic"
+      GroupName: "skills-alb-sg"
+      SecurityGroupIngress:
+        - CidrIp: "0.0.0.0/0"
+          FromPort: 80
+          IpProtocol: "tcp"
+          ToPort: 80
+
+  TargetGroup:
+    Type: "AWS::ElasticLoadBalancingV2::TargetGroup"
+    Properties:
+      HealthCheckPath: "/"
+      Port: 80
+      Protocol: "HTTP"
+      TargetType: "instance"
+      VpcId: !Ref Vpc
+      Name: "skills-web-tg"
+      HealthCheckEnabled: true
+      Targets:
+        - Id: !Ref Instance
+          Port: 80
+
+  KeyPair:
+    Type: "AWS::EC2::KeyPair"
+    Properties:
+      KeyName: "skills"
+      KeyType: "rsa"
+
+Outputs:
+  DNSName:
+    Value: !GetAtt ALB.DNSName
